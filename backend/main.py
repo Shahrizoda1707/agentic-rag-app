@@ -6,8 +6,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from langchain_community.vectorstores import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage
@@ -16,6 +16,7 @@ from langchain.schema import HumanMessage, SystemMessage
 # Konfiguratsiya
 # ---------------------------------------------------------------------------
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
 ALICE_URL = "https://www.gutenberg.org/files/11/11-0.txt"
 DATA_PATH = "/tmp/alice.txt"
 
@@ -36,15 +37,22 @@ def download_source_text():
     return text
 
 # ---------------------------------------------------------------------------
-# 2) Vector store yaratish (HuggingFace embeddings, Chroma in-memory)
+# 2) Vector store yaratish
+#    Embedding modeli lokal kompyuterda YUKLANMAYDI (xotira tejash uchun),
+#    buning o'rniga HuggingFace'ning bepul Inference API'siga so'rov yuboriladi.
 # ---------------------------------------------------------------------------
 def build_vectorstore():
     raw_text = download_source_text()
+    # Bepul tarif xotirasini tejash uchun matn hajmini cheklaymiz
+    raw_text = raw_text[:60000]
     splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
     chunks = splitter.split_text(raw_text)
 
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    vectordb = Chroma.from_texts(chunks, embedding=embeddings)
+    embeddings = HuggingFaceEndpointEmbeddings(
+        model="sentence-transformers/all-MiniLM-L6-v2",
+        huggingfacehub_api_token=HF_API_TOKEN,
+    )
+    vectordb = FAISS.from_texts(chunks, embedding=embeddings)
     return vectordb
 
 print("Vector store tayyorlanmoqda...")
