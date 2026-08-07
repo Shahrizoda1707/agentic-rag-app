@@ -28,7 +28,6 @@ def download_source_text():
         urllib.request.urlretrieve(ALICE_URL, DATA_PATH)
     with open(DATA_PATH, "r", encoding="utf-8") as f:
         text = f.read()
-    # Gutenberg header/footer'ni olib tashlash
     start = text.find("CHAPTER I.")
     end = text.find("THE END")
     if start != -1 and end != -1:
@@ -43,7 +42,6 @@ def download_source_text():
 # ---------------------------------------------------------------------------
 def build_vectorstore():
     raw_text = download_source_text()
-    # Bepul tarif xotirasini tejash uchun matn hajmini cheklaymiz
     raw_text = raw_text[:60000]
     splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
     chunks = splitter.split_text(raw_text)
@@ -77,7 +75,7 @@ app = FastAPI(title="Agentic RAG API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Production'da aniq domenlar bilan cheklash tavsiya etiladi
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -103,15 +101,12 @@ def chat(req: ChatRequest):
     question = req.question
     steps = []
 
-    # --- Retrieve ---
     docs = retriever.invoke(question)
     steps.append("retrieve")
 
-    # --- Grade documents (oddiy relevance tekshiruvi) ---
     context = "\n\n".join(d.page_content for d in docs)
     steps.append("grade_documents")
 
-    # --- Generate ---
     system_prompt = (
         "Siz 'Alice in Wonderland' kitobi bo'yicha savollarga javob beruvchi yordamchisiz. "
         "Faqat berilgan kontekst asosida javob bering. Agar kontekstda javob bo'lmasa, "
